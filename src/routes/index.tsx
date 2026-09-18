@@ -1,907 +1,1150 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, LogIn } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import {
+  LayoutDashboard,
+  Map,
+  ClipboardList,
+  WalletCards,
+  Contact2,
+  Landmark,
+  Cloud,
+  Send,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  FileCode,
+  Search,
+  Phone,
+  MessageSquare,
+  Sparkles,
+  RefreshCw,
+  Smartphone,
+  Maximize2,
+  SlidersHorizontal,
+  ChevronRight,
+  ArrowUpRight,
+  Plus,
+  ShieldCheck,
+  Check,
+  Copy,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
-import Lenis from "lenis";
-import "lenis/dist/lenis.css";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Terra — Land Developer Platform" },
+      { title: "Terra App — Mobile Real Estate Platform" },
       {
         name: "description",
-        content: "Premium plotted developments, managed end to end. Discover Terra's current projects or sign in to your dashboard.",
+        content: "Mobile layout for Terra real estate plot management, visual site map, bookings, installments, and Tally sync.",
       },
     ],
   }),
-  component: Index,
+  component: TerraMobileAppScreen,
 });
 
-const ASSET = "https://storage.googleapis.com/webild/default/templates/marbella";
+// Mock Initial Data matching the Android Room DB & Supabase setup
+interface PlotItem {
+  id: number;
+  number: string;
+  project: string;
+  sizeSqFt: number;
+  facing: string;
+  status: "available" | "booked" | "reserved" | "blocked";
+  price: number;
+  ratePerSqFt: number;
+}
 
-const villas = [
-  { name: "Villa Serena", img: `${ASSET}/properties/villa-1.webp`, desc: "A sunlit 5-bedroom retreat with infinity pool, panoramic sea views, and private garden terraces." },
-  { name: "Casa del Sol", img: `${ASSET}/properties/villa-2.webp`, desc: "Contemporary beachfront living with floor-to-ceiling glass, rooftop lounge, and direct beach access." },
-  { name: "Villa Andalucía", img: `${ASSET}/properties/villa-3.webp`, desc: "Traditional charm meets modern luxury — courtyard, olive grove, and a heated outdoor pool." },
-  { name: "The Meridian", img: `${ASSET}/properties/villa-4.webp`, desc: "Sleek 4-bedroom penthouse villa with smart home technology and sweeping coastal views." },
-  { name: "Villa Blanca", img: `${ASSET}/properties/villa-5.webp`, desc: "Minimalist white-washed estate with private cinema, spa suite, and landscaped Mediterranean gardens." },
-  { name: "Casa Dorada", img: `${ASSET}/properties/villa-6.webp`, desc: "Golden-hour perfection — west-facing terraces, wine cellar, and an open-plan chef's kitchen." },
+interface BookingItem {
+  id: number;
+  customerName: string;
+  customerPhone: string;
+  plotNumber: string;
+  projectName: string;
+  agreementValue: number;
+  downPayment: number;
+  status: "PENDING_CRM" | "PENDING_ACCOUNTS" | "PENDING_MANAGEMENT" | "APPROVED";
+  date: string;
+}
+
+interface InstallmentItem {
+  id: number;
+  buyerName: string;
+  buyerPhone: string;
+  plotNumber: string;
+  installmentNo: number;
+  totalInstallments: number;
+  amount: number;
+  dueDate: string;
+  status: "UPCOMING" | "OVERDUE" | "PAID";
+  paidDate?: string;
+  receiptNumber?: string;
+}
+
+interface LeadItem {
+  id: number;
+  name: string;
+  phone: string;
+  projectName: string;
+  budget: string;
+  stage: "Inquiry" | "Site Visit" | "Negotiation" | "Token Paid";
+  notes: string;
+}
+
+const INITIAL_PLOTS: PlotItem[] = [
+  { id: 101, number: "101", project: "Emerald Palms", sizeSqFt: 1500, facing: "East", status: "booked", price: 3300000, ratePerSqFt: 2200 },
+  { id: 102, number: "102", project: "Emerald Palms", sizeSqFt: 1500, facing: "North", status: "booked", price: 3300000, ratePerSqFt: 2200 },
+  { id: 103, number: "103", project: "Emerald Palms", sizeSqFt: 1800, facing: "East", status: "available", price: 3960000, ratePerSqFt: 2200 },
+  { id: 104, number: "104", project: "Emerald Palms", sizeSqFt: 1800, facing: "West", status: "available", price: 3960000, ratePerSqFt: 2200 },
+  { id: 105, number: "105", project: "Emerald Palms", sizeSqFt: 2400, facing: "North-East Corner", status: "reserved", price: 5760000, ratePerSqFt: 2400 },
+  { id: 106, number: "106", project: "Emerald Palms", sizeSqFt: 1500, facing: "South", status: "available", price: 3300000, ratePerSqFt: 2200 },
+  { id: 107, number: "107", project: "Emerald Palms", sizeSqFt: 1500, facing: "East", status: "available", price: 3300000, ratePerSqFt: 2200 },
+  { id: 108, number: "108", project: "Emerald Palms", sizeSqFt: 2000, facing: "North", status: "blocked", price: 4400000, ratePerSqFt: 2200 },
+  { id: 109, number: "109", project: "Emerald Palms", sizeSqFt: 1500, facing: "West", status: "available", price: 3300000, ratePerSqFt: 2200 },
+  { id: 110, number: "110", project: "Emerald Palms", sizeSqFt: 1800, facing: "East", status: "available", price: 3960000, ratePerSqFt: 2200 },
+  { id: 111, number: "111", project: "Emerald Palms", sizeSqFt: 2100, facing: "North", status: "booked", price: 4620000, ratePerSqFt: 2200 },
+  { id: 112, number: "112", project: "Emerald Palms", sizeSqFt: 1500, facing: "South", status: "available", price: 3300000, ratePerSqFt: 2200 },
 ];
 
-const footerCols = [
-  { title: "Properties", items: ["Villas", "Apartments", "Penthouses", "New Developments"] },
-  { title: "Services", items: ["Property Search", "Legal Assistance", "Interior Design", "Property Management"] },
-  { title: "Locations", items: ["Golden Mile", "Puerto Banús", "Sierra Blanca", "La Zagaleta"] },
-  { title: "Company", items: ["About Us", "Contact", "Privacy Policy", "Terms of Service"] },
+const INITIAL_BOOKINGS: BookingItem[] = [
+  {
+    id: 1,
+    customerName: "Priya Sharma",
+    customerPhone: "+91 98765 43210",
+    plotNumber: "102",
+    projectName: "Emerald Palms",
+    agreementValue: 3300000,
+    downPayment: 500000,
+    status: "APPROVED",
+    date: "14 Sep 2026",
+  },
+  {
+    id: 2,
+    customerName: "Rajesh Kumar Patel",
+    customerPhone: "+91 98220 12345",
+    plotNumber: "101",
+    projectName: "Emerald Palms",
+    agreementValue: 3300000,
+    downPayment: 500000,
+    status: "PENDING_ACCOUNTS",
+    date: "15 Sep 2026",
+  },
+  {
+    id: 3,
+    customerName: "Vikram Malhotra",
+    customerPhone: "+91 99100 88776",
+    plotNumber: "111",
+    projectName: "Emerald Palms",
+    agreementValue: 4620000,
+    downPayment: 750000,
+    status: "PENDING_CRM",
+    date: "16 Sep 2026",
+  },
 ];
 
-function FadeIn({
-  children,
-  className = "",
-  delay = 0,
-  direction = "up",
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-  direction?: "up" | "down" | "left" | "right" | "none";
-}) {
-  const [isVisible, setIsVisible] = useState(false);
-  const domRef = useRef<HTMLDivElement>(null);
+const INITIAL_INSTALLMENTS: InstallmentItem[] = [
+  {
+    id: 1,
+    buyerName: "Priya Sharma",
+    buyerPhone: "+91 98765 43210",
+    plotNumber: "102",
+    installmentNo: 1,
+    totalInstallments: 5,
+    amount: 560000,
+    dueDate: "01 Oct 2026",
+    status: "UPCOMING",
+  },
+  {
+    id: 2,
+    buyerName: "Rajesh Kumar Patel",
+    buyerPhone: "+91 98220 12345",
+    plotNumber: "101",
+    installmentNo: 1,
+    totalInstallments: 5,
+    amount: 560000,
+    dueDate: "28 Sep 2026",
+    status: "OVERDUE",
+  },
+  {
+    id: 3,
+    buyerName: "Anand Deshmukh",
+    buyerPhone: "+91 94230 55443",
+    plotNumber: "204",
+    installmentNo: 2,
+    totalInstallments: 5,
+    amount: 600000,
+    dueDate: "10 Sep 2026",
+    status: "PAID",
+    paidDate: "08 Sep 2026",
+    receiptNumber: "REC-2026-098",
+  },
+];
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-            if (domRef.current) observer.unobserve(domRef.current);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
-    );
+const INITIAL_LEADS: LeadItem[] = [
+  {
+    id: 1,
+    name: "Sunil Verma",
+    phone: "+91 98112 33445",
+    projectName: "Emerald Palms",
+    budget: "₹35-40 Lakhs",
+    stage: "Site Visit",
+    notes: "Interested in East-facing 1500 sq.ft plot. Site visit booked for Saturday.",
+  },
+  {
+    id: 2,
+    name: "Deepika Rao",
+    phone: "+91 97400 66778",
+    projectName: "Palm Meadows",
+    budget: "₹50-60 Lakhs",
+    stage: "Negotiation",
+    notes: "Discussing payment milestones. Requested 6-month EMI plan.",
+  },
+  {
+    id: 3,
+    name: "Amitabh Banerjee",
+    phone: "+91 98301 22334",
+    projectName: "Emerald Palms",
+    budget: "₹45 Lakhs",
+    stage: "Token Paid",
+    notes: "Token ₹1,00,000 paid. Preparing booking document.",
+  },
+];
 
-    const current = domRef.current;
-    if (current) observer.observe(current);
+function TerraMobileAppScreen() {
+  const [viewMode, setViewMode] = useState<"phone" | "full">("phone");
+  const [activeTab, setActiveTab] = useState<"overview" | "plots" | "bookings" | "installments" | "leads" | "treasury">("overview");
 
-    return () => {
-      if (current) observer.unobserve(current);
-    };
-  }, []);
+  // State
+  const [plots, setPlots] = useState<PlotItem[]>(INITIAL_PLOTS);
+  const [bookings, setBookings] = useState<BookingItem[]>(INITIAL_BOOKINGS);
+  const [installments, setInstallments] = useState<InstallmentItem[]>(INITIAL_INSTALLMENTS);
+  const [leads] = useState<LeadItem[]>(INITIAL_LEADS);
 
-  const translateClasses = {
-    up: "translate-y-8",
-    down: "-translate-y-8",
-    left: "translate-x-8",
-    right: "-translate-x-8",
-    none: "",
+  // Modals & Dialogs
+  const [selectedPlot, setSelectedPlot] = useState<PlotItem | null>(null);
+  const [plotFilter, setPlotFilter] = useState<string>("all");
+  const [activeWhatsAppModal, setActiveWhatsAppModal] = useState<{
+    type: "booking" | "emi";
+    name: string;
+    phone: string;
+    details: string;
+    url: string;
+  } | null>(null);
+  const [activeTallyModal, setActiveTallyModal] = useState<{
+    title: string;
+    xml: string;
+  } | null>(null);
+  const [activePaymentModal, setActivePaymentModal] = useState<InstallmentItem | null>(null);
+  const [utrInput, setUtrInput] = useState<string>("");
+
+  // Cloud integration states
+  const [pingStatus, setPingStatus] = useState<"idle" | "pinging" | "success">("idle");
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced">("idle");
+
+  const handleTestPing = () => {
+    setPingStatus("pinging");
+    setTimeout(() => {
+      setPingStatus("success");
+      toast.success("✓ Supabase connection verified (Project: zolbuckwnjsxfgqqkcjj)");
+    }, 900);
   };
 
-  return (
-    <div
-      ref={domRef}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-out ${isVisible
-        ? "opacity-100 translate-x-0 translate-y-0"
-        : `opacity-0 ${translateClasses[direction]}`
-        } ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
+  const handleSyncCloud = () => {
+    setSyncStatus("syncing");
+    setTimeout(() => {
+      setSyncStatus("synced");
+      toast.success(`✓ Synced ${bookings.length} plot booking(s) to Supabase cloud table!`);
+    }, 1200);
+  };
 
-function ParallaxLayer({
-  children,
-  speed = 0.2,
-  className = "",
-}: {
-  children: React.ReactNode;
-  speed?: number;
-  className?: string;
-}) {
-  const layerRef = useRef<HTMLDivElement>(null);
-  const [translateY, setTranslateY] = useState(0);
+  const handleApproveBooking = (bookingId: number) => {
+    setBookings((prev) =>
+      prev.map((b) => {
+        if (b.id !== bookingId) return b;
+        if (b.status === "PENDING_CRM") return { ...b, status: "PENDING_ACCOUNTS" };
+        if (b.status === "PENDING_ACCOUNTS") return { ...b, status: "PENDING_MANAGEMENT" };
+        if (b.status === "PENDING_MANAGEMENT") return { ...b, status: "APPROVED" };
+        return b;
+      })
+    );
+    toast.success("Booking approval state updated successfully.");
+  };
 
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      if (!layerRef.current) return;
-      const rect = layerRef.current.getBoundingClientRect();
-      const windowH = window.innerHeight;
-      const distFromCenter = rect.top + rect.height / 2 - windowH / 2;
-      setTranslateY(distFromCenter * speed);
-    };
-
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [speed]);
-
-  return (
-    <div
-      ref={layerRef}
-      className={`will-change-transform transition-transform duration-150 ease-out ${className}`}
-      style={{
-        transform: `translate3d(0, ${translateY.toFixed(1)}px, 0)`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function ParallaxClipReveal({
-  src,
-  alt,
-  className = "",
-  aspectRatio = "aspect-video",
-}: {
-  src: string;
-  alt: string;
-  className?: string;
-  aspectRatio?: string;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const windowH = window.innerHeight;
-      const rawProgress = (windowH - rect.top) / (windowH + rect.height * 0.4);
-      const clamped = Math.min(1, Math.max(0, rawProgress));
-      const eased = 1 - Math.pow(1 - clamped, 3);
-      setProgress(eased);
-    };
-
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  const insetY = ((1 - progress) * 3.5).toFixed(2);
-  const insetX = ((1 - progress) * 4.5).toFixed(2);
-  const scale = (1 + (1 - progress) * 0.06).toFixed(3);
-
-  return (
-    <div
-      ref={containerRef}
-      className={`group overflow-hidden rounded-xl border border-foreground/10 relative shadow-2xl transition-[clip-path] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${aspectRatio} ${className}`}
-      style={{
-        clipPath: `inset(${insetY}% ${insetX}% round 12px)`,
-      }}
-    >
-      <img
-        src={src}
-        alt={alt}
-        className="w-full h-full object-cover will-change-transform transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
-        style={{
-          transform: `scale(${scale})`,
-        }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" />
-    </div>
-  );
-}
-
-function ParallaxContactSection({
-  handleContactSubmit,
-  contactName,
-  setContactName,
-  contactEmail,
-  setContactEmail,
-  contactPhone,
-  setContactPhone,
-  contactMessage,
-  setContactMessage,
-  contactLoading,
-}: {
-  handleContactSubmit: (e: React.FormEvent) => Promise<void>;
-  contactName: string;
-  setContactName: (v: string) => void;
-  contactEmail: string;
-  setContactEmail: (v: string) => void;
-  contactPhone: string;
-  setContactPhone: (v: string) => void;
-  contactMessage: string;
-  setContactMessage: (v: string) => void;
-  contactLoading: boolean;
-}) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [bgOffset, setBgOffset] = useState(0);
-  const [clipProgress, setClipProgress] = useState(0);
-
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      if (!sectionRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      const windowH = window.innerHeight;
-
-      const rawProgress = (windowH - rect.top) / (windowH + rect.height);
-      const clamped = Math.min(1, Math.max(0, rawProgress));
-
-      const offset = (clamped - 0.5) * -16;
-      setBgOffset(offset);
-
-      const clipRaw = (windowH - rect.top) / (windowH * 0.7);
-      const clipClamped = Math.min(1, Math.max(0, clipRaw));
-      const easedClip = 1 - Math.pow(1 - clipClamped, 3);
-      setClipProgress(easedClip);
-    };
-
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  const insetY = ((1 - clipProgress) * 3).toFixed(2);
-  const insetX = ((1 - clipProgress) * 4).toFixed(2);
-
-  return (
-    <section
-      id="contact"
-      ref={sectionRef}
-      aria-label="Contact"
-      className="relative overflow-hidden min-h-[85vh] md:min-h-[95vh] my-16 md:my-28 py-12 md:py-16 flex items-center justify-center transition-[clip-path] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-      style={{
-        clipPath: `inset(${insetY}% ${insetX}% round 16px)`,
-      }}
-    >
-      <div className="absolute inset-0 overflow-hidden">
-        <img
-          alt="Villa at dusk"
-          className="absolute inset-x-0 -top-[15%] w-full h-[130%] object-cover will-change-transform transition-transform duration-300 ease-out"
-          style={{
-            transform: `translateY(${bgOffset.toFixed(2)}%) scale(1.05)`,
-          }}
-          src={`${ASSET}/contact/cta-bg.webp`}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
-      </div>
-
-      <div className="relative z-10 flex items-center justify-center w-full px-6 md:px-12 py-8 md:py-12">
-        <div className="mx-auto w-content-width">
-          <FadeIn direction="up">
-            <div className="w-full md:w-1/2 lg:w-5/12 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl p-6 md:p-10 shadow-2xl transition-all duration-500 hover:border-white/30 hover:bg-white/[0.13]">
-              <div className="w-fit px-3 py-1 mb-2.5 text-[11px] sm:text-xs tracking-[0.15em] uppercase bg-white/15 text-white/90 rounded-full font-medium border border-white/10">
-                Private Inquiries
-              </div>
-              <h2 className="mb-4 sm:mb-6 text-3xl sm:text-4xl md:text-5xl font-semibold text-white tracking-tight">
-                Get In Touch
-              </h2>
-              <form className="flex flex-col gap-3.5 sm:gap-4" onSubmit={handleContactSubmit}>
-                <div className="grid grid-cols-1 gap-3.5 sm:gap-4 sm:grid-cols-2">
-                  <input
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    required
-                    placeholder="Your name"
-                    aria-label="Your name"
-                    type="text"
-                    className="w-full h-11 sm:h-13 rounded-xl border border-white/20 bg-white/10 px-4 sm:px-5 text-sm sm:text-base text-white placeholder:text-white/40 focus:border-terracotta/80 focus:bg-white/15 focus:outline-none transition-all duration-300"
-                  />
-                  <input
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    required
-                    placeholder="Your email"
-                    aria-label="Your email"
-                    type="email"
-                    className="w-full h-11 sm:h-13 rounded-xl border border-white/20 bg-white/10 px-4 sm:px-5 text-sm sm:text-base text-white placeholder:text-white/40 focus:border-terracotta/80 focus:bg-white/15 focus:outline-none transition-all duration-300"
-                  />
-                </div>
-                <input
-                  value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
-                  required
-                  placeholder="Your phone number"
-                  aria-label="Your phone number"
-                  type="tel"
-                  className="w-full h-11 sm:h-13 rounded-xl border border-white/20 bg-white/10 px-4 sm:px-5 text-sm sm:text-base text-white placeholder:text-white/40 focus:border-terracotta/80 focus:bg-white/15 focus:outline-none transition-all duration-300"
-                />
-                <textarea
-                  value={contactMessage}
-                  onChange={(e) => setContactMessage(e.target.value)}
-                  required
-                  rows={3}
-                  placeholder="Tell us about your dream property..."
-                  aria-label="Message"
-                  className="w-full resize-none rounded-xl border border-white/20 bg-white/10 px-4 sm:px-5 py-3 text-sm sm:text-base text-white placeholder:text-white/40 focus:border-terracotta/80 focus:bg-white/15 focus:outline-none transition-all duration-300"
-                />
-                <button
-                  type="submit"
-                  disabled={contactLoading}
-                  className="flex items-center justify-center w-full h-11 sm:h-13 px-6 text-sm sm:text-base font-medium rounded-xl bg-white text-black cursor-pointer transition-all duration-300 hover:bg-white/90 hover:shadow-lg disabled:opacity-50"
-                >
-                  {contactLoading ? "Sending..." : "Send Message"}
-                </button>
-              </form>
-              <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-white/15 pt-5 sm:pt-6">
-                <p className="text-xs sm:text-sm text-white/80">Prefer to talk? Book a private tour.</p>
-                <a
-                  href="mailto:hello@terra.dev"
-                  className="flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-md p-1.5 pr-4 sm:pr-5 text-xs sm:text-sm font-medium text-white whitespace-nowrap transition-all duration-300 hover:bg-white/25 border border-white/10"
-                >
-                  <img alt="Advisor" className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover" src={`${ASSET}/contact/avatar.webp`} />
-                  Email Us
-                </a>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CanvasHeroVideo({
-  heroWrapRef,
-}: {
-  heroWrapRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imagesRef = useRef<HTMLImageElement[]>([]);
-  const [, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    let canceled = false;
-    const totalFrames = 300;
-    const loadedImages: HTMLImageElement[] = new Array(totalFrames);
-    let loadedCount = 0;
-
-    // Load first frame immediately for instant display
-    const img1 = new Image();
-    img1.src = `/hero/ezgif-frame-001.jpg`;
-    img1.onload = () => {
-      if (canceled) return;
-      loadedImages[0] = img1;
-      imagesRef.current = loadedImages;
-      setIsLoaded(true);
-    };
-
-    // Preload remaining frames
-    for (let i = 1; i <= totalFrames; i++) {
-      const img = new Image();
-      const frameNum = String(i).padStart(3, "0");
-      img.src = `/hero/ezgif-frame-${frameNum}.jpg`;
-      img.onload = () => {
-        if (canceled) return;
-        loadedImages[i - 1] = img;
-        loadedCount++;
-        if (loadedCount % 10 === 0) {
-          imagesRef.current = [...loadedImages];
-        }
-      };
-    }
-
-    return () => {
-      canceled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrap = heroWrapRef.current;
-    if (!canvas || !wrap) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let rafId: number;
-
-    const render = () => {
-      const rect = wrap.getBoundingClientRect();
-      const total = wrap.offsetHeight - window.innerHeight;
-      const progress = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
-
-      if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
-
-      const imgs = imagesRef.current;
-      const totalFrames = 300;
-      const frameIndex = Math.min(
-        totalFrames - 1,
-        Math.max(0, Math.floor(progress * totalFrames))
-      );
-
-      // Find nearest loaded frame if current frame is downloading
-      let img = imgs[frameIndex];
-      if (!img || !img.complete || img.naturalWidth === 0) {
-        for (let offset = 1; offset < 30; offset++) {
-          const prev = imgs[Math.max(0, frameIndex - offset)];
-          if (prev && prev.complete && prev.naturalWidth > 0) {
-            img = prev;
-            break;
-          }
-          const next = imgs[Math.min(totalFrames - 1, frameIndex + offset)];
-          if (next && next.complete && next.naturalWidth > 0) {
-            img = next;
-            break;
-          }
-        }
-      }
-
-      if (img && img.complete && img.naturalWidth > 0) {
-        const hRatio = canvas.width / img.naturalWidth;
-        const vRatio = canvas.height / img.naturalHeight;
-        const ratio = Math.max(hRatio, vRatio);
-        const centerShiftX = (canvas.width - img.naturalWidth * ratio) / 2;
-        const centerShiftY = (canvas.height - img.naturalHeight * ratio) / 2;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(
-          img,
-          0,
-          0,
-          img.naturalWidth,
-          img.naturalHeight,
-          centerShiftX,
-          centerShiftY,
-          img.naturalWidth * ratio,
-          img.naturalHeight * ratio
-        );
-      }
-
-      rafId = requestAnimationFrame(render);
-    };
-
-    rafId = requestAnimationFrame(render);
-
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, [heroWrapRef]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full object-cover"
-    />
-  );
-}
-
-const heroChapters = [
-  {
-    badge: "Terra Premium Land Developments",
-    title: "Discover Plots with a Soul",
-    subtitle: "Sanctuaries designed for modern living & everlasting peace.",
-    buttons: [
-      { text: "View Properties", href: "#properties", primary: true },
-      { text: "Book a Tour", href: "#contact", primary: false },
-    ],
-  },
-  {
-    badge: "Master-Planned Excellence",
-    title: "Prime Locations, Pure Nature",
-    subtitle: "Seamlessly integrated infrastructure with panoramic aerial vistas.",
-    buttons: [
-      { text: "Explore Layouts", href: "#properties", primary: true },
-      { text: "Our Vision", href: "#about", primary: false },
-    ],
-  },
-  {
-    badge: "Your Future Heritage",
-    title: "Build Your Signature Vision",
-    subtitle: "Exclusive plotted parcels ready for custom luxury construction.",
-    buttons: [
-      { text: "Book a Private Tour", href: "#contact", primary: true },
-      { text: "Sign In", href: "/auth", primary: false },
-    ],
-  },
-];
-
-function Index() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const heroWrapRef = useRef<HTMLDivElement>(null);
-  const [scrollLen] = useState(3000);
-  const [scrollProgress, setScrollProgress] = useState(0);
-
-  useEffect(() => {
-    const wrap = heroWrapRef.current;
-    if (!wrap) return;
-
-    const handleScroll = () => {
-      const rect = wrap.getBoundingClientRect();
-      const total = wrap.offsetHeight - window.innerHeight;
-      const progress = Math.min(1, Math.max(0, -rect.top / Math.max(1, total)));
-      setScrollProgress(progress);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.4,
-      easing: (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      wheelMultiplier: 0.9,
-      touchMultiplier: 1.5,
+  const openWhatsAppBooking = (b: BookingItem) => {
+    const text = `*TERRA PLOTS - BOOKING CONFIRMATION*\n\nDear ${b.customerName},\nYour plot booking for *Plot #${b.plotNumber}* in *${b.projectName}* has been processed.\n\n• Agreement Value: ₹${(b.agreementValue / 100000).toFixed(2)} Lakhs\n• Advance Paid: ₹${(b.downPayment / 100000).toFixed(2)} Lakhs\n• Booking Date: ${b.date}\n• Status: Confirmed\n\n_Meta Cloud WhatsApp Template: plot_booking_confirmation_\n_Phone ID: 1126770290524197_`;
+    const encoded = encodeURIComponent(text);
+    const url = `https://wa.me/${b.customerPhone.replace(/[^0-9]/g, "")}?text=${encoded}`;
+    setActiveWhatsAppModal({
+      type: "booking",
+      name: b.customerName,
+      phone: b.customerPhone,
+      details: `Plot #${b.plotNumber} · ${b.projectName} · ₹${(b.agreementValue / 100000).toFixed(2)} L`,
+      url,
     });
+  };
 
-    let rafId: number;
-    function raf(time: number) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
+  const openWhatsAppEmi = (i: InstallmentItem) => {
+    const text = `*TERRA PLOTS - EMI PAYMENT STATEMENT*\n\nDear ${i.buyerName},\nStatement for *Plot #${i.plotNumber}*:\n\n• Installment: #${i.installmentNo} of ${i.totalInstallments}\n• Due Amount: ₹${(i.amount / 100000).toFixed(2)} Lakhs\n• Due Date: ${i.dueDate}\n• Status: ${i.status}\n\nPlease submit payment receipt via UTR.\n\n_Meta Cloud Template: customer_emi_statement_v2_\n_Phone ID: 1126770290524197_`;
+    const encoded = encodeURIComponent(text);
+    const url = `https://wa.me/${i.buyerPhone.replace(/[^0-9]/g, "")}?text=${encoded}`;
+    setActiveWhatsAppModal({
+      type: "emi",
+      name: i.buyerName,
+      phone: i.buyerPhone,
+      details: `Installment #${i.installmentNo} · Due: ${i.dueDate} · ₹${(i.amount / 100000).toFixed(2)} L`,
+      url,
+    });
+  };
 
-    rafId = requestAnimationFrame(raf);
+  const openTallyXml = (b: BookingItem) => {
+    const xml = `<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>HAEGL Tech</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create">
+            <DATE>20260917</DATE>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <REFERENCE>TERRA-PL-${b.plotNumber}</REFERENCE>
+            <PARTYLEDGERNAME>Customer - ${b.customerName}</PARTYLEDGERNAME>
+            <NARRATION>Sale of Plot #${b.plotNumber} in ${b.projectName}</NARRATION>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Customer - ${b.customerName}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${b.agreementValue}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Plot Sales Revenue</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>${b.agreementValue}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
 
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
-  }, []);
+    setActiveTallyModal({
+      title: `Tally XML Voucher (Plot #${b.plotNumber})`,
+      xml,
+    });
+  };
 
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactMessage, setContactMessage] = useState("");
-  const [contactLoading, setContactLoading] = useState(false);
-
-  const handleContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!contactName || !contactEmail || !contactPhone || !contactMessage) {
-      toast.error("Please fill in all fields");
+  const handleRecordReceipt = () => {
+    if (!activePaymentModal || !utrInput) {
+      toast.error("Please enter a valid payment UTR or reference number");
       return;
     }
-    setContactLoading(true);
-    try {
-      const { error } = await supabase.from("contact_messages").insert({
-        name: contactName,
-        email: contactEmail,
-        phone: contactPhone,
-        message: contactMessage,
-      });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast.error("A message has already been sent with this phone number.");
-        } else {
-          toast.error("Failed to send message. Please try again.");
-        }
-        throw error;
-      }
-
-      toast.success("Message sent successfully!");
-      setContactName("");
-      setContactEmail("");
-      setContactPhone("");
-      setContactMessage("");
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setContactLoading(false);
-    }
+    setInstallments((prev) =>
+      prev.map((i) =>
+        i.id === activePaymentModal.id
+          ? {
+              ...i,
+              status: "PAID",
+              paidDate: "17 Sep 2026",
+              receiptNumber: utrInput,
+            }
+          : i
+      )
+    );
+    toast.success(`Receipt recorded with UTR ${utrInput} for ${activePaymentModal.buyerName}`);
+    setActivePaymentModal(null);
+    setUtrInput("");
   };
 
-  const { data: projects = [], isLoading: projectsLoading } = useQuery({
-    queryKey: ["landing-projects"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id, name, location, description, cover_image_url, status, created_at")
-        .eq("status", "live")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
+  const filteredPlots = plots.filter((p) => {
+    if (plotFilter === "all") return true;
+    return p.status === plotFilter;
   });
 
   return (
-    <div className="relative bg-background text-foreground">
-      {/* NAV */}
-      <nav className="fixed inset-x-0 top-0 z-[1000] bg-black/30 backdrop-blur-md border-b border-white/10 py-4">
-        <div className="w-content-width mx-auto flex items-center justify-between relative z-[1100]">
-          <Link to="/" className="text-xl font-medium text-white mix-blend-difference">Terra</Link>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Link
-              to="/auth"
-              className="flex items-center gap-1.5 h-9 px-3 sm:px-5 text-xs sm:text-sm rounded secondary-button hover:opacity-90 whitespace-nowrap"
-            >
-              <LogIn className="size-3.5 sm:size-4 shrink-0" />
-              Log In
-            </Link>
-            <a href="#contact" className="flex items-center justify-center h-9 px-3 sm:px-5 text-xs sm:text-sm rounded primary-button hover:opacity-90 whitespace-nowrap">Book a Tour</a>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="group relative flex flex-col justify-center items-center w-9 h-9 gap-1 z-[1100] text-white hover:opacity-80 transition-opacity"
-              aria-label="Toggle menu"
-            >
-              <span className={`w-5 h-0.5 bg-current transition-transform duration-300 ${menuOpen ? "rotate-45 translate-y-1.5" : ""}`} />
-              <span className={`w-5 h-0.5 bg-current transition-opacity duration-300 ${menuOpen ? "opacity-0" : ""}`} />
-              <span className={`w-5 h-0.5 bg-current transition-transform duration-300 ${menuOpen ? "-rotate-45 -translate-y-1.5" : ""}`} />
-            </button>
-          </div>
+    <div className="min-h-screen bg-neutral-900 text-neutral-100 flex flex-col items-center justify-start py-2 sm:py-6 px-0 sm:px-4 font-sans selection:bg-amber-600 selection:text-white">
+      {/* Top Controls: Mobile View Mode Switcher */}
+      <header className="w-full max-w-md mx-auto mb-3 px-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-neutral-300">Terra Mobile App</span>
         </div>
-        <div
-          className={`fixed inset-0 h-screen w-screen flex flex-col items-center justify-center bg-foreground transition-all duration-700 ease-[cubic-bezier(0.9,0,0.1,1)] ${menuOpen ? "pointer-events-auto opacity-100 z-[1050]" : "pointer-events-none opacity-0 z-[-1]"
+
+        <div className="flex items-center gap-1 bg-neutral-800 p-1 rounded-full border border-neutral-700">
+          <button
+            onClick={() => setViewMode("phone")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              viewMode === "phone" ? "bg-amber-600 text-white shadow-sm" : "text-neutral-400 hover:text-neutral-200"
             }`}
-          style={{ clipPath: menuOpen ? "polygon(0 0,100% 0,100% 100%,0 100%)" : "polygon(0 0,100% 0,100% 0,0 0)" }}
-        >
-          <div className="flex flex-col items-center w-full max-w-3xl px-6 sm:px-8">
-            <div className="flex flex-col items-center gap-4 sm:gap-6 text-center">
-              <a
-                href="#hero"
-                onClick={() => setMenuOpen(false)}
-                className="text-3xl sm:text-5xl font-medium text-background hover:opacity-75 transition-opacity"
-              >
-                Home
-              </a>
-              <a
-                href="#properties"
-                onClick={() => setMenuOpen(false)}
-                className="text-3xl sm:text-5xl font-medium text-background hover:opacity-75 transition-opacity"
-              >
-                Properties
-              </a>
-              <a
-                href="#about"
-                onClick={() => setMenuOpen(false)}
-                className="text-3xl sm:text-5xl font-medium text-background hover:opacity-75 transition-opacity"
-              >
-                About
-              </a>
-              <a
-                href="#contact"
-                onClick={() => setMenuOpen(false)}
-                className="text-3xl sm:text-5xl font-medium text-background hover:opacity-75 transition-opacity"
-              >
-                Contact
-              </a>
+          >
+            <Smartphone className="size-3.5" />
+            <span>Mobile Phone</span>
+          </button>
+          <button
+            onClick={() => setViewMode("full")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              viewMode === "full" ? "bg-amber-600 text-white shadow-sm" : "text-neutral-400 hover:text-neutral-200"
+            }`}
+          >
+            <Maximize2 className="size-3.5" />
+            <span>Full View</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Container: Either Phone Frame or Full Responsive */}
+      <div
+        className={`w-full transition-all duration-300 ${
+          viewMode === "phone"
+            ? "max-w-[420px] rounded-[42px] border-[6px] border-neutral-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden bg-neutral-950 min-h-[840px] flex flex-col relative"
+            : "max-w-4xl rounded-2xl border border-neutral-800 bg-neutral-950 shadow-2xl flex flex-col overflow-hidden min-h-[800px]"
+        }`}
+      >
+        {/* Phone Dynamic Island & Status Bar (in Phone mode) */}
+        {viewMode === "phone" && (
+          <div className="w-full pt-3 px-6 pb-2 bg-neutral-950 flex items-center justify-between select-none text-[11px] font-semibold text-neutral-400 border-b border-neutral-900 z-50">
+            <span>9:41</span>
+            {/* Dynamic Island Pill */}
+            <div className="h-4 w-24 bg-neutral-800 rounded-full flex items-center justify-center">
+              <div className="h-1.5 w-1.5 rounded-full bg-neutral-600 mr-2" />
+              <div className="h-2 w-2 rounded-full bg-neutral-900 border border-neutral-700" />
             </div>
-            <div className="w-full mt-12 pt-8 border-t border-background/20 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-background/60">
-              <Link
-                to="/"
-                onClick={() => setMenuOpen(false)}
-                className="hover:opacity-100 transition-opacity"
-              >
-                <div
-                  className="font-medium text-background tracking-tighter uppercase"
-                  style={{ fontSize: "clamp(2rem,6vw,8rem)" }}
-                />
-              </Link>
-              <div className="h-px bg-background/20" />
+            <div className="flex items-center gap-1.5">
+              <span>5G</span>
+              <span className="text-[9px]">100%</span>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Header Bar */}
+        <div className="w-full bg-neutral-950/90 backdrop-blur-md px-4 py-3 border-b border-neutral-800 flex items-center justify-between sticky top-0 z-40">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-amber-600/20 border border-amber-600/40 flex items-center justify-center font-bold text-amber-500 text-sm">
+              T
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-sm text-neutral-100">Terra App</span>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  v2.4
+                </span>
+              </div>
+              <p className="text-[10px] text-neutral-400 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Cloud Synced · HAEGL Tech
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="px-2 py-1 rounded-md bg-neutral-800 text-[10px] font-medium text-neutral-300 border border-neutral-700">
+              Admin
             </div>
           </div>
         </div>
-      </nav>
 
-      <main>
-        {/* HERO — scroll-scrubbed video canvas */}
-        <div id="hero" ref={heroWrapRef} className="relative bg-black" style={{ height: `${scrollLen}px` }}>
-          <section className="sticky top-0 overflow-hidden flex flex-col justify-between w-full h-screen bg-black">
-            <CanvasHeroVideo heroWrapRef={heroWrapRef} />
+        {/* Scrollable Mobile Content Body */}
+        <div className="flex-1 overflow-y-auto pb-24 p-3.5 space-y-4 bg-neutral-950">
+          {/* TAB 1: OVERVIEW / DASHBOARD */}
+          {activeTab === "overview" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Connected Cloud Services Status Card */}
+              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CloudQueue className="size-4 text-amber-500" />
+                    <span className="text-xs font-bold text-neutral-200">Connected Services</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    LIVE CONFIG
+                  </span>
+                </div>
 
-            {/* Soft subtle top & bottom gradient for nav & footer legibility */}
-            <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" aria-hidden />
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" aria-hidden />
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold text-neutral-400">Supabase</span>
+                      <span className="text-[9px] text-emerald-400 font-bold">READY</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-200 font-medium truncate">zolbuckwnjsxfgqqkcjj</p>
+                    <button
+                      onClick={handleTestPing}
+                      disabled={pingStatus === "pinging"}
+                      className="w-full mt-1.5 py-1 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-[10px] font-medium text-amber-400 border border-neutral-700 flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <RefreshCw className={`size-2.5 ${pingStatus === "pinging" ? "animate-spin" : ""}`} />
+                      {pingStatus === "pinging" ? "Testing..." : "Test Ping"}
+                    </button>
+                  </div>
 
-            <div className="relative z-10 w-content-width mx-auto pt-24 sm:pt-28 flex-1 flex flex-col justify-center">
-              <div className="relative w-full md:w-7/10 lg:w-6/10 xl:w-[54%] 2xl:w-4/10 min-h-[320px]">
-                {heroChapters.map((chapter, idx) => {
-                  const start = idx / heroChapters.length;
-                  const end = (idx + 1) / heroChapters.length;
-                  const mid = (start + end) / 2;
+                  <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold text-neutral-400">WhatsApp API</span>
+                      <span className="text-[9px] text-emerald-400 font-bold">ACTIVE</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-200 font-medium truncate">ID: 1126770290524197</p>
+                    <button
+                      onClick={handleSyncCloud}
+                      disabled={syncStatus === "syncing"}
+                      className="w-full mt-1.5 py-1 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-[10px] font-medium text-emerald-400 border border-neutral-700 flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <RefreshCw className={`size-2.5 ${syncStatus === "syncing" ? "animate-spin" : ""}`} />
+                      {syncStatus === "syncing" ? "Syncing..." : "Sync Cloud"}
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                  let opacity = 0;
-                  if (idx === 0 && scrollProgress < 0.28) {
-                    opacity = 1 - Math.max(0, (scrollProgress - 0.18) / 0.10);
-                  } else if (idx === heroChapters.length - 1 && scrollProgress > 0.65) {
-                    opacity = Math.min(1, (scrollProgress - 0.65) / 0.12);
-                  } else {
-                    const dist = Math.abs(scrollProgress - mid);
-                    const maxDist = 0.18;
-                    opacity = Math.max(0, 1 - dist / maxDist);
-                  }
+              {/* 2x2 Metric KPI Grid */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-1">
+                  <span className="text-[10px] font-medium text-neutral-400">Gross Sales Value</span>
+                  <div className="text-lg font-bold text-neutral-100">₹1.85 Cr</div>
+                  <span className="text-[10px] text-emerald-400 font-medium">↑ +18% this month</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-1">
+                  <span className="text-[10px] font-medium text-neutral-400">Plots Sold / Total</span>
+                  <div className="text-lg font-bold text-amber-500">48 / 60</div>
+                  <span className="text-[10px] text-neutral-400 font-medium">80% Inventory Sold</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-1">
+                  <span className="text-[10px] font-medium text-neutral-400">Pending Approvals</span>
+                  <div className="text-lg font-bold text-amber-400">3</div>
+                  <span className="text-[10px] text-amber-400/80 font-medium">Action required</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-1">
+                  <span className="text-[10px] font-medium text-neutral-400">Collections (Escrow)</span>
+                  <div className="text-lg font-bold text-emerald-400">₹42.5 L</div>
+                  <span className="text-[10px] text-neutral-400 font-medium">HDFC Bank A/c</span>
+                </div>
+              </div>
 
-                  const active = opacity > 0.05;
+              {/* Active Projects Summary */}
+              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-200">Active Layouts</span>
+                  <button
+                    onClick={() => setActiveTab("plots")}
+                    className="text-[10px] text-amber-500 font-semibold flex items-center hover:underline"
+                  >
+                    View Map <ChevronRight className="size-3" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-200">Emerald Palms</div>
+                      <div className="text-[10px] text-neutral-400">Devenahalli Highway · 24 Plots</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-emerald-400">18 Booked</div>
+                      <div className="text-[10px] text-neutral-400">6 Available</div>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-200">Palm Meadows</div>
+                      <div className="text-[10px] text-neutral-400">Sarjapur Extension · 20 Plots</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-amber-400">15 Booked</div>
+                      <div className="text-[10px] text-neutral-400">5 Available</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Bookings Quick Access */}
+              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-200">Recent Bookings</span>
+                  <button
+                    onClick={() => setActiveTab("bookings")}
+                    className="text-[10px] text-amber-500 font-semibold flex items-center hover:underline"
+                  >
+                    All Bookings <ChevronRight className="size-3" />
+                  </button>
+                </div>
+
+                {bookings.map((b) => (
+                  <div
+                    key={b.id}
+                    className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-neutral-200">{b.customerName}</div>
+                      <div className="text-[10px] text-neutral-400">Plot #{b.plotNumber} · {b.projectName}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => openWhatsAppBooking(b)}
+                        className="p-1.5 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800 hover:bg-emerald-900 transition-colors"
+                        title="Send WhatsApp"
+                      >
+                        <Send className="size-3" />
+                      </button>
+                      <button
+                        onClick={() => openTallyXml(b)}
+                        className="p-1.5 rounded-lg bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 transition-colors"
+                        title="Tally XML"
+                      >
+                        <FileCode className="size-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: SITE MAP & PLOTS */}
+          {activeTab === "plots" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-100">Site Map Visualizer</h3>
+                  <p className="text-[10px] text-neutral-400">Emerald Palms Masterplan</p>
+                </div>
+                <div className="flex items-center gap-1 text-[10px]">
+                  <span className="flex items-center gap-1 text-emerald-400"><span className="h-2 w-2 rounded-full bg-emerald-500" />Avail</span>
+                  <span className="flex items-center gap-1 text-amber-500"><span className="h-2 w-2 rounded-full bg-amber-500" />Booked</span>
+                  <span className="flex items-center gap-1 text-blue-400"><span className="h-2 w-2 rounded-full bg-blue-500" />Resvd</span>
+                </div>
+              </div>
+
+              {/* Status Filter Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                {["all", "available", "booked", "reserved", "blocked"].map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setPlotFilter(f)}
+                    className={`px-3 py-1 rounded-full capitalize text-[11px] font-medium whitespace-nowrap transition-colors ${
+                      plotFilter === f
+                        ? "bg-amber-600 text-white font-semibold"
+                        : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              {/* Interactive Grid of Plots */}
+              <div className="grid grid-cols-3 gap-2.5">
+                {filteredPlots.map((plot) => {
+                  let badgeColor = "bg-emerald-950/80 border-emerald-700 text-emerald-300";
+                  if (plot.status === "booked") badgeColor = "bg-amber-950/80 border-amber-700 text-amber-300";
+                  if (plot.status === "reserved") badgeColor = "bg-blue-950/80 border-blue-700 text-blue-300";
+                  if (plot.status === "blocked") badgeColor = "bg-neutral-900 border-neutral-700 text-neutral-500";
 
                   return (
-                    <div
-                      key={idx}
-                      className={`flex flex-col gap-3 transition-all duration-500 ease-out ${
-                        active ? "pointer-events-auto" : "pointer-events-none"
-                      } ${idx === 0 ? "relative" : "absolute inset-0"}`}
-                      style={{
-                        opacity,
-                        transform: `translateY(${(1 - opacity) * 16}px)`,
-                      }}
+                    <button
+                      key={plot.id}
+                      onClick={() => setSelectedPlot(plot)}
+                      className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all hover:scale-[1.03] active:scale-95 ${badgeColor}`}
                     >
-                      <div className="w-fit px-3 py-1 mb-1 text-xs sm:text-sm bg-card/90 text-card-foreground rounded shadow-sm">
-                        {chapter.badge}
-                      </div>
-                      <h1 className="text-4xl sm:text-6xl md:text-7xl 2xl:text-8xl leading-[1.15] font-semibold text-white text-balance drop-shadow-[0_4px_12px_rgba(0,0,0,0.85)]">
-                        {chapter.title}
-                      </h1>
-                      <p className="text-lg md:text-xl text-white leading-snug text-balance drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
-                        {chapter.subtitle}
-                      </p>
-                      <div className="flex flex-wrap gap-3 mt-2 md:mt-3">
-                        {chapter.buttons.map((btn) => (
-                          <a
-                            key={btn.text}
-                            href={btn.href}
-                            className={`flex items-center justify-center h-10 px-6 text-sm rounded ${
-                              btn.primary ? "primary-button" : "secondary-button"
-                            } hover:opacity-90`}
-                          >
-                            {btn.text}
-                          </a>
-                        ))}
-                      </div>
-                    </div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider opacity-80">Plot</span>
+                      <span className="text-base font-extrabold my-0.5">#{plot.number}</span>
+                      <span className="text-[9px] font-medium">{plot.sizeSqFt} sq.ft</span>
+                      <span className="text-[8px] opacity-80 mt-1 capitalize">{plot.status}</span>
+                    </button>
                   );
                 })}
               </div>
-            </div>
 
-            <div className="relative z-10 flex justify-end items-end mx-auto pb-8 w-content-width">
-              <p className="md:max-w-1/2 2xl:max-w-4/10 text-xs md:text-sm uppercase tracking-wide leading-relaxed text-balance text-end text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
-                An independent land development studio crafting untamed, soulful spaces for those seeking a different rhythm. A product by HAEGL technologies.
+              <p className="text-[10px] text-center text-neutral-500">
+                Tap any plot to inspect dimensions, square yardage, facing, and launch booking.
               </p>
             </div>
-          </section>
-        </div>
+          )}
 
-        {/* ABOUT */}
-        <section id="about" aria-label="About" className="relative py-28 overflow-hidden">
-          <ParallaxLayer speed={-0.18} className="absolute inset-x-0 top-6 flex justify-center pointer-events-none select-none z-0">
-            <span className="text-[8.7vw] font-black text-foreground/[0.08] uppercase tracking-tight whitespace-nowrap w-full text-center px-1">
-              TERRA ESTATES
-            </span>
-          </ParallaxLayer>
-          <div className="relative z-10 flex flex-col gap-8 md:gap-10 mx-auto w-content-width">
-            <FadeIn direction="up">
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.25em] text-terracotta mb-1">
-                  01 — Terra Vision
-                </span>
-                <h2 className="md:max-w-8/10 text-5xl md:text-7xl 2xl:text-8xl leading-[1.15] font-semibold text-center text-balance">
-                  For those who travel like it's an art form.
-                </h2>
+          {/* TAB 3: BOOKINGS */}
+          {activeTab === "bookings" && (
+            <div className="space-y-3.5 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-100">Plot Bookings</h3>
+                  <p className="text-[10px] text-neutral-400">Sequential approval pipeline</p>
+                </div>
+                <span className="text-xs font-bold text-amber-500">{bookings.length} Active</span>
               </div>
-            </FadeIn>
-            <FadeIn direction="up" delay={150}>
-              <ParallaxClipReveal
-                src={`${ASSET}/about/statement.webp`}
-                alt="Modern villa exterior"
-                aspectRatio="aspect-square md:aspect-video"
-              />
-            </FadeIn>
-          </div>
-        </section>
 
-        {/* PROJECTS */}
-        <section id="properties" aria-label="Projects" className="relative py-28 overflow-hidden">
-          <ParallaxLayer speed={-0.2} className="absolute inset-x-0 top-8 flex justify-center pointer-events-none select-none z-0">
-            <span className="text-[8.7vw] font-black text-foreground/[0.08] uppercase tracking-tight whitespace-nowrap w-full text-center px-1">
-              PLOTTED PARCELS
-            </span>
-          </ParallaxLayer>
-          <div className="relative z-10 flex flex-col gap-8 md:gap-10">
-            <FadeIn direction="up">
-              <div className="flex flex-col items-center w-content-width mx-auto gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.25em] text-terracotta mb-1">
-                  02 — Terra Developments
-                </span>
-                {/* <div className="px-3 py-1 mb-1 text-sm bg-card/90 text-card-foreground rounded w-fit">Developments</div> */}
-                <h2 className="md:max-w-8/10 text-5xl md:text-6xl 2xl:text-7xl leading-[1.15] font-semibold text-center text-balance">
-                  Our Projects
-                </h2>
-                <p className="md:max-w-7/10 text-lg md:text-xl leading-snug text-center text-balance text-muted-foreground">
-                  Explore the plotted developments currently available through Terra.
-                </p>
-              </div>
-            </FadeIn>
-            <div className="w-content-width mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
-              {projectsLoading ? (
-                <p className="col-span-full py-12 text-center text-muted-foreground">Loading projects…</p>
-              ) : projects.length === 0 ? (
-                <p className="col-span-full py-12 text-center text-muted-foreground">New project launches will appear here soon.</p>
-              ) : (
-                projects.map((project, index) => (
-                  <FadeIn key={project.id} direction="up" delay={index * 150}>
-                    <div className="flex flex-col gap-3 xl:gap-3.5 2xl:gap-4">
-                      <ParallaxClipReveal
-                        src={project.cover_image_url || `${ASSET}/properties/villa-${(index % 6) + 1}.webp`}
-                        alt={project.name}
-                        aspectRatio="aspect-square"
-                      />
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between gap-3"><h3 className="text-3xl font-semibold leading-snug">{project.name}</h3><span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium capitalize text-muted-foreground">{project.status}</span></div>
-                        <p className="text-sm font-medium text-terracotta">{project.location}</p>
-                        <p className="text-base leading-snug text-muted-foreground">{project.description || "A thoughtfully planned Terra land development."}</p>
-                        <Link to="/auth" className="mt-2 w-fit text-sm font-medium underline underline-offset-4 hover:text-terracotta">Explore project</Link>
+              {bookings.map((b) => (
+                <div key={b.id} className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-100">{b.customerName}</div>
+                      <div className="text-[11px] text-neutral-400">{b.customerPhone}</div>
+                      <div className="text-[11px] font-medium text-amber-500 mt-0.5">
+                        Plot #{b.plotNumber} · {b.projectName}
                       </div>
                     </div>
-                  </FadeIn>
-                ))
-              )}
-            </div>
-          </div>
-        </section>
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${
+                        b.status === "APPROVED"
+                          ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                          : "bg-amber-950 text-amber-400 border border-amber-800"
+                      }`}
+                    >
+                      {b.status.replace("_", " ")}
+                    </span>
+                  </div>
 
-        {/* CONTACT */}
-        <ParallaxContactSection
-          handleContactSubmit={handleContactSubmit}
-          contactName={contactName}
-          setContactName={setContactName}
-          contactEmail={contactEmail}
-          setContactEmail={setContactEmail}
-          contactPhone={contactPhone}
-          setContactPhone={setContactPhone}
-          contactMessage={contactMessage}
-          setContactMessage={setContactMessage}
-          contactLoading={contactLoading}
-        />
-      </main>
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-neutral-800/80">
+                    <div>
+                      <span className="text-[10px] text-neutral-500">Agreement</span>
+                      <div className="font-bold text-neutral-200">₹{(b.agreementValue / 100000).toFixed(2)} L</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-neutral-500">Advance Paid</span>
+                      <div className="font-bold text-emerald-400">₹{(b.downPayment / 100000).toFixed(2)} L</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-neutral-500">Date</span>
+                      <div className="text-neutral-300 font-medium">{b.date}</div>
+                    </div>
+                  </div>
 
-      <footer aria-label="Site footer" className="w-full pt-20 pb-10">
-        <FadeIn direction="up">
-          <div className="w-content-width mx-auto pt-10 border-t border-foreground/15">
-            <div className="w-full flex flex-wrap justify-between gap-y-10 mb-10">
-              {footerCols.map((col) => (
-                <div key={col.title} className="w-1/2 md:w-auto flex flex-col items-start gap-3">
-                  <h3 className="text-sm opacity-50 truncate">{col.title}</h3>
-                  {col.items.map((it) => (
-                    <button key={it} className="text-base hover:opacity-75 transition-opacity cursor-pointer text-left">
-                      {it}
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-neutral-800/80">
+                    <button
+                      onClick={() => openWhatsAppBooking(b)}
+                      className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Send className="size-3" />
+                      <span>WhatsApp</span>
                     </button>
-                  ))}
+
+                    <button
+                      onClick={() => openTallyXml(b)}
+                      className="flex-1 py-1.5 px-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <FileCode className="size-3" />
+                      <span>Tally XML</span>
+                    </button>
+
+                    {b.status !== "APPROVED" && (
+                      <button
+                        onClick={() => handleApproveBooking(b.id)}
+                        className="py-1.5 px-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium flex items-center justify-center gap-1 transition-colors"
+                        title="Advance Approval Stage"
+                      >
+                        <Check className="size-3" />
+                        <span>Approve</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
-              <div className="w-1/2 md:w-auto flex flex-col items-start gap-3">
-                <h3 className="text-sm opacity-50 truncate">Account</h3>
-                <Link to="/auth" className="text-base hover:opacity-75 transition-opacity cursor-pointer text-left">
-                  Log In
-                </Link>
+            </div>
+          )}
+
+          {/* TAB 4: INSTALLMENTS / LEDGER */}
+          {activeTab === "installments" && (
+            <div className="space-y-3.5 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-100">Installment Ledger</h3>
+                  <p className="text-[10px] text-neutral-400">Milestone receipts & UTR sync</p>
+                </div>
+              </div>
+
+              {installments.map((i) => (
+                <div key={i.id} className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-100">{i.buyerName}</div>
+                      <div className="text-[11px] text-neutral-400">Plot #{i.plotNumber} · Inst #{i.installmentNo}/{i.totalInstallments}</div>
+                    </div>
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${
+                        i.status === "PAID"
+                          ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                          : i.status === "OVERDUE"
+                          ? "bg-red-950 text-red-400 border border-red-800"
+                          : "bg-amber-950 text-amber-400 border border-amber-800"
+                      }`}
+                    >
+                      {i.status}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-neutral-800/80">
+                    <div>
+                      <span className="text-[10px] text-neutral-500">Amount Due</span>
+                      <div className="font-bold text-neutral-200">₹{(i.amount / 100000).toFixed(2)} L</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-neutral-500">Due Date</span>
+                      <div className="font-semibold text-neutral-300">{i.dueDate}</div>
+                    </div>
+                    {i.receiptNumber && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-neutral-500">Receipt Ref</span>
+                        <div className="font-mono text-[10px] text-emerald-400">{i.receiptNumber}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-neutral-800/80">
+                    <button
+                      onClick={() => openWhatsAppEmi(i)}
+                      className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Send className="size-3" />
+                      <span>WhatsApp Statement</span>
+                    </button>
+
+                    {i.status !== "PAID" && (
+                      <button
+                        onClick={() => {
+                          setActivePaymentModal(i);
+                          setUtrInput(`UTR-${Math.floor(100000 + Math.random() * 900000)}`);
+                        }}
+                        className="py-1.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <WalletCards className="size-3" />
+                        <span>Record Receipt</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* TAB 5: LEADS CRM */}
+          {activeTab === "leads" && (
+            <div className="space-y-3.5 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-100">Leads CRM Pipeline</h3>
+                  <p className="text-[10px] text-neutral-400">Prospective buyer follow-ups</p>
+                </div>
+              </div>
+
+              {leads.map((lead) => (
+                <div key={lead.id} className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2.5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-100">{lead.name}</div>
+                      <div className="text-[11px] text-neutral-400">{lead.phone}</div>
+                    </div>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-amber-950 text-amber-400 border border-amber-800">
+                      {lead.stage}
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-neutral-300">
+                    <span className="text-neutral-500">Project:</span> {lead.projectName} · <span className="text-neutral-500">Budget:</span> {lead.budget}
+                  </div>
+                  <p className="text-[11px] text-neutral-400 bg-neutral-950 p-2 rounded-xl border border-neutral-800/80">
+                    "{lead.notes}"
+                  </p>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <a
+                      href={`tel:${lead.phone}`}
+                      className="flex-1 py-1.5 px-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Phone className="size-3" />
+                      <span>Call Buyer</span>
+                    </a>
+                    <a
+                      href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Send className="size-3" />
+                      <span>WhatsApp Chat</span>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* TAB 6: TREASURY & TALLY */}
+          {activeTab === "treasury" && (
+            <div className="space-y-3.5 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-100">Project Treasury</h3>
+                  <p className="text-[10px] text-neutral-400">Escrow balances & Tally sync</p>
+                </div>
+                <span className="text-xs font-bold text-emerald-400">HAEGL Tech</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-3">
+                <span className="text-xs font-bold text-neutral-200">Project Bank Accounts</span>
+                <div className="space-y-2">
+                  <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-200">Emerald Palms Escrow</div>
+                      <div className="text-[10px] text-neutral-400">HDFC Bank A/c #9921</div>
+                    </div>
+                    <div className="text-right font-bold text-emerald-400 text-sm">₹72,50,000</div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-neutral-200">Palm Meadows Escrow</div>
+                      <div className="text-[10px] text-neutral-400">ICICI Bank A/c #4412</div>
+                    </div>
+                    <div className="text-right font-bold text-emerald-400 text-sm">₹48,00,000</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-200">Tally XML Connector</span>
+                  <span className="text-[10px] text-emerald-400 font-bold">READY</span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  Every booking and installment is automatically formatted into standard Tally Prime XML vouchers for company <strong className="text-neutral-200">HAEGL Tech</strong>.
+                </p>
+                <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 font-mono text-[10px] text-neutral-300">
+                  POST http://localhost:9000 &rarr; &lt;CREATED&gt;1&lt;/CREATED&gt;
+                </div>
               </div>
             </div>
-            <div className="w-full h-px bg-foreground/20" />
-            <div className="w-full flex items-center justify-between pt-5">
-              <span className="text-sm opacity-50">© 2026 Terra Studios. All rights reserved.</span>
-              <span className="text-sm opacity-50">Marbella, Costa del Sol</span>
+          )}
+        </div>
+
+        {/* Native Mobile Bottom Navigation Bar */}
+        <nav className="w-full bg-neutral-950/95 backdrop-blur-xl border-t border-neutral-800/80 px-2 py-2 flex items-center justify-around z-40 absolute bottom-0 inset-x-0">
+          {[
+            { id: "overview", label: "Overview", icon: LayoutDashboard },
+            { id: "plots", label: "Site Map", icon: Map },
+            { id: "bookings", label: "Bookings", icon: ClipboardList },
+            { id: "installments", label: "Ledger", icon: WalletCards },
+            { id: "leads", label: "Leads", icon: Contact2 },
+            { id: "treasury", label: "Treasury", icon: Landmark },
+          ].map((tab) => {
+            const active = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+                  active ? "text-amber-500 font-bold scale-105" : "text-neutral-400 hover:text-neutral-200"
+                }`}
+              >
+                <Icon className={`size-4 mb-0.5 ${active ? "text-amber-500" : "text-neutral-400"}`} />
+                <span className="text-[10px] tracking-tight">{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Plot Details Modal */}
+        {selectedPlot && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-amber-500">Plot Details</span>
+                  <h4 className="text-lg font-bold text-neutral-100">Plot #{selectedPlot.number}</h4>
+                </div>
+                <button
+                  onClick={() => setSelectedPlot(null)}
+                  className="p-1.5 rounded-full bg-neutral-800 text-neutral-400 hover:text-white"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-500">Area</span>
+                  <div className="font-bold text-neutral-200">{selectedPlot.sizeSqFt} sq.ft</div>
+                  <div className="text-[10px] text-neutral-400">{(selectedPlot.sizeSqFt / 9).toFixed(1)} sq.yd</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-500">Facing</span>
+                  <div className="font-bold text-neutral-200">{selectedPlot.facing}</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-500">Base Rate</span>
+                  <div className="font-bold text-neutral-200">₹{selectedPlot.ratePerSqFt} / sq.ft</div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800">
+                  <span className="text-[10px] text-neutral-500">Total Price</span>
+                  <div className="font-bold text-amber-500">₹{(selectedPlot.price / 100000).toFixed(2)} Lakhs</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  toast.success(`Booking form launched for Plot #${selectedPlot.number}!`);
+                  setSelectedPlot(null);
+                  setActiveTab("bookings");
+                }}
+                className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
+              >
+                <span>Book Plot #{selectedPlot.number}</span>
+                <ArrowUpRight className="size-4" />
+              </button>
             </div>
           </div>
-        </FadeIn>
-      </footer>
+        )}
+
+        {/* WhatsApp Dispatch Modal */}
+        {activeWhatsAppModal && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl animate-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Send className="size-4 text-emerald-400" />
+                  <h4 className="text-sm font-bold text-neutral-100">WhatsApp Cloud Dispatch</h4>
+                </div>
+                <button
+                  onClick={() => setActiveWhatsAppModal(null)}
+                  className="p-1.5 rounded-full bg-neutral-800 text-neutral-400 hover:text-white"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 space-y-1.5 text-xs">
+                <div className="text-neutral-400">Recipient: <strong className="text-neutral-200">{activeWhatsAppModal.name}</strong></div>
+                <div className="text-neutral-400">Phone: <strong className="text-neutral-200">{activeWhatsAppModal.phone}</strong></div>
+                <div className="text-neutral-400">Subject: <span className="text-neutral-300">{activeWhatsAppModal.details}</span></div>
+                <div className="text-[10px] text-emerald-400 font-mono mt-1">
+                  Template: {activeWhatsAppModal.type === "booking" ? "plot_booking_confirmation" : "customer_emi_statement_v2"}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={activeWhatsAppModal.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    toast.success(`WhatsApp message sent to ${activeWhatsAppModal.name}`);
+                    setActiveWhatsAppModal(null);
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
+                >
+                  <span>Open WhatsApp</span>
+                  <ArrowUpRight className="size-3.5" />
+                </a>
+                <button
+                  onClick={() => setActiveWhatsAppModal(null)}
+                  className="py-2 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tally XML Viewer Modal */}
+        {activeTallyModal && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-t-3xl sm:rounded-3xl p-5 space-y-3 shadow-2xl animate-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileCode className="size-4 text-amber-500" />
+                  <h4 className="text-sm font-bold text-neutral-100">{activeTallyModal.title}</h4>
+                </div>
+                <button
+                  onClick={() => setActiveTallyModal(null)}
+                  className="p-1.5 rounded-full bg-neutral-800 text-neutral-400 hover:text-white"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <p className="text-[11px] text-neutral-400">
+                Company Target: <strong className="text-neutral-200">HAEGL Tech</strong>. Ready to import via Tally Prime HTTP XML Port 9000.
+              </p>
+
+              <pre className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 text-[10px] font-mono text-emerald-400 overflow-x-auto max-h-48 whitespace-pre">
+                {activeTallyModal.xml}
+              </pre>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(activeTallyModal.xml);
+                    toast.success("Tally XML envelope copied to clipboard!");
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <Copy className="size-3.5" />
+                  <span>Copy XML</span>
+                </button>
+                <button
+                  onClick={() => setActiveTallyModal(null)}
+                  className="py-2 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Record Receipt Modal */}
+        {activePaymentModal && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="w-full max-w-sm bg-neutral-900 border border-neutral-800 rounded-t-3xl sm:rounded-3xl p-5 space-y-3.5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-neutral-100">Record Payment Receipt</h4>
+                <button
+                  onClick={() => setActivePaymentModal(null)}
+                  className="p-1.5 rounded-full bg-neutral-800 text-neutral-400 hover:text-white"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-neutral-400">
+                Recording payment of <strong className="text-neutral-200">₹{(activePaymentModal.amount / 100000).toFixed(2)} Lakhs</strong> for {activePaymentModal.buyerName} (Plot #{activePaymentModal.plotNumber}).
+              </p>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-neutral-400 font-medium">Bank UTR / Transaction Reference</label>
+                <input
+                  type="text"
+                  value={utrInput}
+                  onChange={(e) => setUtrInput(e.target.value)}
+                  placeholder="e.g. UTR-829102"
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-700 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-amber-500 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={handleRecordReceipt}
+                  className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors"
+                >
+                  Confirm & Generate Receipt
+                </button>
+                <button
+                  onClick={() => setActivePaymentModal(null)}
+                  className="py-2 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

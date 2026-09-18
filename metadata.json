@@ -1,0 +1,6 @@
+{
+  "name": "Terra App",
+  "description": "Real estate plot management, visual site mapper, leads CRM, bookings with sequential approvals, installments, and Tally accounting sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

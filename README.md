@@ -1,64 +1,95 @@
-# Plot Leads — what's new
+# Terra Plots — Android Application
 
-A full leads pipeline under every plot, so multiple prospective buyers can be
-tracked before one of them is turned into an actual booking.
+A modern, native Android application built with **Kotlin**, **Jetpack Compose**, and **Room Database** for real estate developers, sales teams, and land managers.
 
-## How it works
+Terra Plots enables end-to-end management of plotted land developments: visual site layout inventory, leads CRM pipeline, formal plot bookings with 3-tier sequential approvals, milestone installment tracking, inter-project treasury transfers, and automated Tally Prime XML accounting synchronization.
 
-Open a project → click a mapped plot → the side panel now has a **Leads**
-section under the plot's details.
+---
 
-- **Add lead** — logs a prospect against that plot: name, phone, email,
-  budget, how they found you (walk-in / referral / online / etc.), notes,
-  and an optional site-visit date + location. Anyone signed in can add a
-  lead (attributed to them).
-- Each lead shows as a card with a tap-to-call phone number, a WhatsApp
-  shortcut, their budget/source, the scheduled meeting (if any), and a
-  colour-coded **status pill** (New → Contacted → Meeting scheduled →
-  Negotiating → Converted → Dropped) that can be changed inline.
-- **Reserve** (admin only) — picks that lead as the one holding the plot.
-  The plot flips to "Reserved", gets tagged with that lead, and is
-  highlighted at the top of the leads list with a "Selected" badge.
-- **Book for them** / **Convert to booking** — takes you to the existing
-  booking form with the lead's name/phone/email/notes pre-filled, and a
-  banner confirming which lead is being converted. On submit, the lead is
-  automatically marked "Converted" and the booking keeps a reference back
-  to it.
+## 🌟 Core Features Ported
 
-Admins can edit/delete any lead; regular users can edit the leads they
-created. Everything reuses the app's existing card/badge/dialog styling
-(terracotta accents, the same status-pill pattern as plots/bookings), so it
-feels native rather than bolted on.
+### 1. Visual Site Mapper & Plot Inventory
+- **Interactive Land Parcel Grid**: View all plots categorized by dimensions (1200, 1500, 1800, 2400 sqft), facing direction (East, North, West, South, Corner, Park Facing), and live availability.
+- **Dynamic Pricing Calculator**: Instant calculation of total plot value based on base sqft rate plus premium charges for corner or park-facing plots.
+- **Plot Hold & Reservation**: One-tap temporary reservation for interested prospective buyers.
+- **Color-Coded Statuses**: Clear visual hierarchy matching original brand specifications:
+  - `Available` (Emerald Green)
+  - `Reserved` (Cobalt Blue)
+  - `Booked` (Vibrant Orange)
+  - `Sold` (Dark Crimson)
 
-## Files in this bundle
+### 2. Leads Pipeline & CRM
+- **6-Stage Sales Funnel**: New → Contacted → Meeting Scheduled → Negotiating → Converted → Dropped.
+- **Action Shortcuts**: Direct dial phone integration and instant WhatsApp chat launch for sales executives.
+- **Plot Attribution**: Link prospective buyers directly to specific plots of interest with budget tracking.
+- **Convert to Booking**: Seamless transition from qualified lead to formal booking, pre-populating purchaser details.
+
+### 3. Bookings & 3-Tier Sequential Approvals
+- **Formal Deal Structuring**: Captures Purchaser details, PAN/Tax ID, Agreement Value, Government Guideline Value, Down Payment, and Payment Mode (RTGS/NEFT, Cheque, UPI, Net Banking).
+- **Sequential Approval Workflow**:
+  1. *CRM Verification*
+  2. *Accounts & Payment Clearance*
+  3. *Executive Management Signoff*
+- **Cancellation & Refunds**: Structured cancellation workflow with reason logging and refund settlement calculation.
+
+### 4. Installment Schedules & Milestone Ledger
+- **Milestone Billing**: Automated generation of milestone-based installment schedules (Booking Advance, Agreement Signing, Infrastructure Laying, Final Registration).
+- **Receipt Management**: Record collections with UTR/Cheque reference numbers and automated receipt numbering (`RCT-XXXXX`).
+
+### 5. Treasury & Inter-Project Reallocation
+- **Project Escrow Accounts**: Track bank accounts, account numbers, IFSC codes, and current balances across multiple developments (e.g. Grand Meadows, Royal Palms, Sierra Vista).
+- **Inter-Project Fund Transfers**: Record working capital reallocation between project accounts with purpose narrations and reference tracking.
+
+### 6. Tally Prime Accounting Integration
+- **XML Schema Generator**: Generate and view standard Tally Prime XML payloads for Sales Vouchers (customer debit, sales revenue credit) and Journal Vouchers (inter-project transfers).
+- **Sync Status**: Track synchronization state and Tally voucher numbers.
+
+### 7. BDO Partners & Sales Team Incentives
+- **Commission Calculations**: Automatically calculate percentage-based incentives on booked plots for sales representatives and channel partners.
+- **Disbursal Tracking**: Record payout disbursements with banking references.
+
+---
+
+## 🏗️ Technical Architecture
+
+- **Language**: Kotlin 2.1.0
+- **UI Toolkit**: Jetpack Compose with Material Design 3 (M3)
+- **Design System**: Editorial Terracotta & Sand palette (`#E07A5F`, `#222222`, `#FDFBF7`, `#2E7D32`, `#2B5B84`)
+- **State Management**: Android `ViewModel` + `StateFlow`
+- **Local Persistence**: Android Room Database (`TerraDatabase`) with Coroutines & Reactive `Flow`
+- **Navigation**: Compose Navigation with type-safe routing and edge-to-edge safe drawing insets
+- **Launcher Icon**: Custom adaptive launcher icon with terracotta land parcel emblem
+
+---
+
+## 📂 Project Structure
 
 ```
-supabase/migrations/20260716120000_add_plot_leads.sql   ← new table + columns (apply this migration)
-src/components/site-mapper/types.ts                     ← replaces the existing file (adds lead types)
-src/components/site-mapper/LeadFormDialog.tsx            ← new file
-src/components/site-mapper/LeadsPanel.tsx                 ← new file
-src/components/site-mapper/SiteMapper.tsx                 ← replaces the existing file
-src/routes/_authenticated/projects_.$id.tsx               ← replaces the existing file
-src/routes/_authenticated/plots.$plotId.book.tsx           ← replaces the existing file
+app/
+├── src/main/
+│   ├── AndroidManifest.xml
+│   ├── java/com/example/
+│   │   ├── MainActivity.kt               # App container & bottom navigation
+│   │   ├── data/
+│   │   │   ├── model/TerraModels.kt       # Domain enums & data structures
+│   │   │   ├── local/TerraEntities.kt     # Room database entities
+│   │   │   ├── local/TerraDao.kt          # Room DAO reactive queries
+│   │   │   ├── local/TerraDatabase.kt     # Room database with seed data
+│   │   │   └── repository/TerraRepository.kt
+│   │   ├── ui/
+│   │   │   ├── TerraViewModel.kt          # MVVM state holder & business logic
+│   │   │   ├── theme/                     # Color, Typography, and M3 Theme
+│   │   │   ├── components/                # Badges, StatCards, ApprovalPills
+│   │   │   └── screens/
+│   │   │       ├── DashboardScreen.kt     # Executive KPI overview
+│   │   │       ├── SiteMapperScreen.kt    # Interactive plot inventory
+│   │   │       ├── LeadsCrmScreen.kt      # Leads stage funnel & dialer
+│   │   │       ├── BookingsScreen.kt      # Approvals & cancellation
+│   │   │       ├── InstallmentsScreen.kt  # Milestone collection ledger
+│   │   │       ├── TreasuryScreen.kt      # Escrow accounts & Tally sync
+│   │   │       ├── IncentivesScreen.kt    # Sales commission disbursals
+│   │   │       └── BookingFormScreen.kt   # Plot booking creation form
+│   └── res/                               # Vector drawables, themes, mipmaps
+├── build.gradle.kts
+└── proguard-rules.pro
 ```
-
-## Applying it
-
-1. Drop the two new files (`LeadFormDialog.tsx`, `LeadsPanel.tsx`) into
-   `src/components/site-mapper/`.
-2. Overwrite the four existing files with the versions here (they're small,
-   targeted diffs — `types.ts` gained a leads section at the bottom,
-   `SiteMapper.tsx` gained a `userId` prop + the `<LeadsPanel>` render,
-   `projects_.$id.tsx` just passes `userId` down, and
-   `plots.$plotId.book.tsx` gained lead pre-fill + a `leadId` search param).
-3. Run the migration against your Supabase project (`supabase db push`,
-   or paste the SQL into the SQL editor).
-4. `pnpm dev` — TanStack Router will regenerate `routeTree.gen.ts`
-   automatically to pick up the new `leadId` search param.
-
-No other files were touched. The Supabase generated types file
-(`src/integrations/supabase/types.ts`) wasn't regenerated, so the new
-`plot_leads` table and the `lead_id`/`selected_lead_id` columns are
-accessed with a light `as any` cast — exactly the same pattern the codebase
-already uses for `project_documents`. Regenerate types via the Supabase CLI
-whenever convenient and those casts can be dropped.

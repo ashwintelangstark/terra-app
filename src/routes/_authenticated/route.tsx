@@ -179,9 +179,38 @@ function AuthedLayout() {
         </header>
 
         {/* Dynamic Page Outlet */}
-        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
           <Outlet />
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="md:hidden fixed bottom-0 inset-x-0 bg-card/95 backdrop-blur-lg border-t border-border/60 z-40 flex items-center justify-around px-2 py-1.5 shadow-lg safe-bottom">
+          {[
+            { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
+            { to: "/projects", label: "Projects", icon: FolderKanban },
+            { to: "/bookings", label: "Bookings", icon: ClipboardList },
+            { to: "/installments", label: "Ledger", icon: WalletCards },
+            { to: "/leads", label: "Leads", icon: Contact2 },
+            ...(role === "admin" || role === "super_admin" || role === "management" || role === "accounts"
+              ? [{ to: "/treasury", label: "Treasury", icon: Landmark }]
+              : []),
+          ].map((item) => {
+            const active = location.pathname === item.to || (item.to !== "/" && location.pathname.startsWith(item.to));
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors text-[10px] font-medium min-w-[52px] ${
+                  active ? "text-terracotta font-semibold" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className={`h-5 w-5 mb-0.5 ${active ? "text-terracotta" : "text-muted-foreground"}`} />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );

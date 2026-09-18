@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Terra App</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_projects">Projects</string>
+    <string name="nav_site_mapper">Site Map</string>
+    <string name="nav_leads">Leads CRM</string>
+    <string name="nav_bookings">Bookings</string>
+    <string name="nav_installments">Installments</string>
+    <string name="nav_treasury">Treasury</string>
+    <string name="nav_incentives">Incentives</string>
+    <string name="action_filter">Filter</string>
+    <string name="action_search">Search</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_book_now">Book Plot</string>
+    <string name="action_reserve">Reserve</string>
+    <string name="action_sync_tally">Sync to Tally</string>
+</resources>
